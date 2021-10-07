@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	botserver "first_server/bot_server"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,16 +16,13 @@ type Ret struct {
 
 func (my_handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("The method is", r.Method)
-	ret := Ret{
-		Message: 100,
-		Str:     "str",
-	}
-	ret_json, _ := json.Marshal(ret)
-	fmt.Println(string(ret_json))
-	io.WriteString(w, string(ret_json))
+	fmt.Println(string(botserver.Get_devices_byte()))
+	io.WriteString(w, string(botserver.Get_devices_byte()))
 }
 
 func main() {
+	fmt.Println(string(botserver.Get_devices_byte()))
+
 	handler := my_handler{}
 	server := http.Server{
 		Addr:    ":8000",
