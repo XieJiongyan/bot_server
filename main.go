@@ -20,7 +20,7 @@ func (my_handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(botserver.Get_devices_byte()))
 }
 
-func main() {
+func start_http_server() {
 	fmt.Println(string(botserver.Get_devices_byte()))
 
 	handler := my_handler{}
@@ -31,4 +31,9 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		panic(err)
 	}
+}
+
+func main() {
+	start_http_server()
+	select {}
 }
