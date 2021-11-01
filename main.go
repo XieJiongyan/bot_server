@@ -34,6 +34,7 @@ func start_http_server() {
 }
 
 func main() {
-	start_http_server()
+	go start_http_server()
+	botserver.Start_tcp_server()
 	select {}
 }
