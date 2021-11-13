@@ -35,49 +35,7 @@ func start_http_server() {
 
 func main() {
 	go start_http_server()
-	botserver.Start_tcp_server()
+	go botserver.Start_tcp_server()
+	go botserver.Load_account_by_json("data/clients.json")
 	select {}
 }
-
-// package main
-
-// import (
-// 	"bufio"
-// 	"fmt"
-// 	"net"
-// )
-
-// // TCP Server端测试
-// // 处理函数
-// func process(conn net.Conn) {
-// 	defer conn.Close() // 关闭连接
-// 	for {
-// 		reader := bufio.NewReader(conn)
-// 		var buf [128]byte
-// 		n, err := reader.Read(buf[:]) // 读取数据
-// 		if err != nil {
-// 			fmt.Println("read from client failed, err: ", err)
-// 			break
-// 		}
-// 		recvStr := string(buf[:n])
-// 		fmt.Println("收到Client端发来的数据：", recvStr)
-// 		conn.Write([]byte(recvStr)) // 发送数据
-// 	}
-// }
-
-// func main() {
-// 	listen, err := net.Listen("tcp", ":8100")
-// 	fmt.Println("aaaaaaa")
-// 	if err != nil {
-// 		fmt.Println("Listen() failed, err: ", err)
-// 		return
-// 	}
-// 	for {
-// 		conn, err := listen.Accept() // 监听客户端的连接请求
-// 		if err != nil {
-// 			fmt.Println("Accept() failed, err: ", err)
-// 			continue
-// 		}
-// 		go process(conn) // 启动一个goroutine来处理客户端的连接请求
-// 	}
-// }
