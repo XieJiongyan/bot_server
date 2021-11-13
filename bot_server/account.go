@@ -8,9 +8,10 @@ import (
 )
 
 type user struct {
-	Id       uint   `json:"id"`
-	Password string `json:"password"`
-	Is_login bool   `json:"is_login"`
+	Id         uint   `json:"id"`
+	Password   string `json:"password"`
+	Is_login   bool   `json:"is_login"`
+	login_lock chan bool
 }
 
 type account struct {
@@ -18,6 +19,12 @@ type account struct {
 	write_lock chan bool
 }
 
+func account_construct() *account {
+	var acc *account = &account{}
+	acc._users = make(map[uint]user)
+	acc.write_lock = make(chan bool, 1)
+	return acc
+}
 func Load_account_by_json(filename string) *account {
 	var acc *account = &account{}
 	acc._users = make(map[uint]user)
@@ -53,6 +60,8 @@ func Load_account_by_json(filename string) *account {
 
 // 并发安全地为账号系统增添用户
 // 只有在 account 中不含有 u 的 id 的 user 时， 才会增添账号
+// 增添的账号确保处于非登陆的状态
+// 增添的账号处于非锁定状态
 func (a *account) add_user(u user) {
 	var id uint = u.Id
 	a.write_lock <- true
@@ -61,6 +70,11 @@ func (a *account) add_user(u user) {
 		<-a.write_lock
 		return
 	}
-	a._users[id] = u
+	u_copy := u
+	u_copy.Is_login = false
+	u_copy.login_lock = make(chan bool, 1)
+	a._users[id] = u_copy
 	<-a.write_lock
 }
+
+func Login_in() {}
