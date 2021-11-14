@@ -77,4 +77,28 @@ func (a *account) add_user(u user) {
 	<-a.write_lock
 }
 
-func Login_in() {}
+func (a *account) Login(id uint, password string) bool {
+	u, exist := a._users[id]
+	if !exist {
+		return false
+	}
+	u.login_lock <- true
+	if u.Is_login || password != u.Password {
+		fmt.Println("Already login or false Password")
+		<-u.login_lock
+		return false
+	}
+	u.Is_login = true
+	<-u.login_lock
+	return true
+}
+
+func (a *account) Logout(id uint) {
+	u, exist := a._users[id]
+	if !exist {
+		return
+	}
+	u.login_lock <- true
+	u.Is_login = false
+	<-u.login_lock
+}
