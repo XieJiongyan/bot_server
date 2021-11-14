@@ -58,6 +58,8 @@ type Tcp_server struct {
 
 func start_server(coon net.Conn) {
 	var t *Tcp_server = &Tcp_server{}
+	t.Conn = coon
+	t.Conn.Write([]byte("Received request.\n"))
 	if t.Conn == nil {
 		log.Panic("connection is nil")
 	}
