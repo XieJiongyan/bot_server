@@ -23,6 +23,9 @@ type server_center struct {
 	device_lock chan bool
 }
 
+/**
+单例模式
+*/
 var Sc *server_center
 
 func (sc *server_center) add_client_server(t *Tcp_server, id uint, password string) bool {
