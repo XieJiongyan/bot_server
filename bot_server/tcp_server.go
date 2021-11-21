@@ -83,7 +83,7 @@ func start_server(coon net.Conn) {
 	}
 	var login_str *login_content = &login_content{}
 	login_str.Content = make([]string, 4)
-	err = json.Unmarshal(read_byte, login_str)
+	err = json.Unmarshal(read_byte[:cnt], login_str)
 	if err != nil || len(login_str.Content) < 4 {
 		fmt.Println(err)
 	}
@@ -92,6 +92,7 @@ func start_server(coon net.Conn) {
 	// 这里是建联过程，如果失败，将会断开连接
 	if login_str.Content[0] == "login" {
 		if login_str.Content[1] == "client" {
+			t.Conn.Write([]byte("Start login\n"))
 			id_int, err := strconv.Atoi(login_str.Content[2])
 			if err != nil {
 				fmt.Println(err)
@@ -101,7 +102,7 @@ func start_server(coon net.Conn) {
 
 			var password string = login_str.Content[3]
 			Sc.add_client_server(t, t.id, password)
-
+			t.Conn.Write([]byte("login success. \n"))
 			go t.read()
 			go t.write()
 			started = true
@@ -119,6 +120,10 @@ func Start_tcp_server(port uint) {
 	Sc = &server_center{}
 	Sc.client_account = *Load_account_by_json("data/clients.json")
 	Sc.device_account = *account_construct()
+	Sc.client_lock = make(chan bool, 1)
+	Sc.device_lock = make(chan bool, 1)
+	Sc.client_server = make(map[uint]*Tcp_server)
+	Sc.device_server = make(map[uint]*Tcp_server)
 	for {
 		coon, err := tcp_server.Accept()
 		fmt.Println("Accept tcp server")
