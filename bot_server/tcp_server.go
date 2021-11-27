@@ -106,8 +106,7 @@ func start_server(coon net.Conn) {
 			var password string = login_str.Content[3]
 			Sc.add_client_server(t, t.id, password)
 			t.Conn.Write([]byte("login success. \n"))
-			go t.read()
-			go t.write()
+			go t.customer_start()
 			started = true
 		}
 	}

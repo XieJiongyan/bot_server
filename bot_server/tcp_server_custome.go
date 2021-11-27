@@ -1,6 +1,14 @@
 package botserver
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
+
+func (t *Tcp_server) customer_start() {
+	go t.read()
+	go t.heartbeat()
+}
 
 func (t *Tcp_server) read() {
 	defer Sc.remove_client_server(t.id)
@@ -20,6 +28,9 @@ func (t *Tcp_server) read() {
 	}
 }
 
-func (t *Tcp_server) write() {
-
+func (t *Tcp_server) heartbeat() {
+	for {
+		time.Sleep(time.Duration(5) * time.Second)
+		t.Conn.Write([]byte("heartbeat\n"))
+	}
 }
