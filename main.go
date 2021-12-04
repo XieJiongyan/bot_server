@@ -35,7 +35,7 @@ func start_http_server() {
 
 func main() {
 	go start_http_server()
-	go botserver.Start_tcp_server(8100)
+	go botserver.StartTcpServer(8100)
 	// go botserver.Load_account_by_json("data/clients.json")
 	select {}
 }

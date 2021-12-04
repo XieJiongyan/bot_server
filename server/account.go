@@ -1,4 +1,4 @@
-package botserver
+package server
 
 import (
 	"encoding/json"
@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 )
+
+const tag = "server "
 
 type user struct {
 	Id         uint   `json:"id"`
@@ -25,7 +27,7 @@ func account_construct() *account {
 	acc.write_lock = make(chan bool, 1)
 	return acc
 }
-func Load_account_by_json(filename string) *account {
+func loadAccountByJson(filename string) *account {
 	var acc *account = &account{}
 	acc._users = make(map[uint]user)
 	acc.write_lock = make(chan bool, 1)
@@ -77,7 +79,7 @@ func (a *account) add_user(u user) {
 	<-a.write_lock
 }
 
-func (a *account) Login(id uint, password string) bool {
+func (a *account) login(id uint, password string) bool {
 	u, exist := a._users[id]
 	if !exist {
 		return false
@@ -93,12 +95,13 @@ func (a *account) Login(id uint, password string) bool {
 	return true
 }
 
-func (a *account) Logout(id uint) {
+func (a *account) logout(id uint) {
 	u, exist := a._users[id]
 	if !exist {
 		return
 	}
 	u.login_lock <- true
 	u.Is_login = false
+	fmt.Println(tag, "successfully logout")
 	<-u.login_lock
 }
