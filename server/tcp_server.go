@@ -11,14 +11,14 @@ import (
 )
 
 type TcpServer struct {
-	id   uint
-	Conn net.Conn
+	Id   uint
+	conn net.Conn
 }
 
 // 返回连接构成的 tcp_server, 如果登陆失败，会返回相应的错误
 func LoginForConn(conn net.Conn) (TcpServer, error) {
 	conn.SetDeadline(time.Now().Add(time.Second * 15))
-	conn.Write([]byte("Connected, start logining in"))
+	conn.Write([]byte("Connected, start logining in\n"))
 
 	readByte := make([]byte, 1000)
 	cnt, err := conn.Read(readByte)
@@ -89,6 +89,11 @@ type server_center struct {
 	deviceLock chan bool
 }
 
+/**
+单例模式
+*/
+var sc *server_center
+
 func init() {
 	sc = &server_center{}
 	sc.clientAccount = *loadAccountByJson("data/clients.json")
@@ -99,16 +104,11 @@ func init() {
 	sc.deviceServer = make(map[uint]*TcpServer)
 }
 
-/**
-单例模式
-*/
-var sc *server_center
-
 func addClientServer(t *TcpServer, id uint) bool {
 	sc.clientLock <- true
 	defer func() { <-sc.clientLock }()
 
-	t.id = id
+	t.Id = id
 	_, exist := sc.clientServer[id]
 	if exist {
 		fmt.Println("already exist unit")
@@ -125,15 +125,16 @@ func removeClientServer(id uint) {
 	if _, isExist := sc.clientServer[id]; !isExist {
 		return
 	}
-	sc.clientServer[id].Conn.Close()
+	sc.clientServer[id].conn.Close()
 	sc.clientAccount.logout(id)
 	delete(sc.clientServer, id)
 }
 
+//通过 TcpServer.heartbeat() 确保及时知道网络连接情况
 func (t *TcpServer) heartbeat() {
 	for {
 		time.Sleep(time.Duration(5) * time.Second)
-		t.Conn.SetDeadline(time.Now().Add(time.Second * 15))
+		t.conn.SetDeadline(time.Now().Add(time.Second * 15))
 		err := t.Write([]byte("heartbeat\n"))
 		if err != nil {
 			fmt.Println(tag, err)
@@ -143,9 +144,33 @@ func (t *TcpServer) heartbeat() {
 }
 
 func (t *TcpServer) Write(b []byte) error {
-	_, err := t.Conn.Write(b)
+	_, err := t.conn.Write(b)
 	if err != nil {
-		removeClientServer(t.id)
+		removeClientServer(t.Id)
 	}
 	return err
+}
+
+type InputStruct struct {
+	Command string                 `json:"command"`
+	Options []string               `json:"options"`
+	Extras  map[string]interface{} `json:"extras"`
+}
+
+// 阻塞读取，如果返回错误，则说明 Tcp_server 已有错误
+func (t *TcpServer) Read() (InputStruct, error) {
+	buf := make([]byte, 1000)
+	_, err := t.conn.Read(buf)
+	if err != nil {
+		removeClientServer(t.Id)
+		return InputStruct{}, err
+	}
+
+	is := InputStruct{}
+	err = json.Unmarshal(buf, &is)
+	if err != nil {
+		fmt.Println(tag, "unmarshal error: ", err)
+		return t.Read()
+	}
+	return is, err
 }

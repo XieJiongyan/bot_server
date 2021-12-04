@@ -1,6 +1,7 @@
 package botserver
 
 import (
+	"first_server/bot_server/clock"
 	server "first_server/server"
 	"fmt"
 	"log"
@@ -27,8 +28,22 @@ func StartTcpServer(port uint) {
 }
 
 func startCoon(conn net.Conn) {
-	_, err := server.LoginForConn(conn)
+	t, err := server.LoginForConn(conn)
 	if err != nil {
 		fmt.Println(err)
+	}
+
+	for {
+		is, err := t.Read()
+		if err != nil {
+			return
+		}
+
+		if is.Command == "clock" {
+			err := clock.DealClock(is, t)
+			if err != nil {
+				return
+			}
+		}
 	}
 }
