@@ -40,7 +40,7 @@ func startCoon(conn net.Conn) {
 		}
 
 		if is.Command == "clock" {
-			err := clock.DealClock(is, t)
+			err := clock.DealClockForClient(is, t)
 			if err != nil {
 				return
 			}

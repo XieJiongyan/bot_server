@@ -70,8 +70,9 @@ func loginAccount(readByte []byte) (bool, uint, error) {
 		var password string = login_str.Content[3]
 
 		ok := sc.clientAccount.login(id, password)
-		return ok, id, err
+		return ok, id, nil
 	}
+	err = fmt.Errorf("Unknown login command")
 	return false, 0, err
 }
 
@@ -152,22 +153,23 @@ func (t *TcpServer) Write(b []byte) error {
 }
 
 type InputStruct struct {
-	Command string                 `json:"command"`
-	Options []string               `json:"options"`
-	Extras  map[string]interface{} `json:"extras"`
+	Command string   `json:"command"`
+	Options []string `json:"options"`
+	Extras  string   `json:"extras"`
 }
 
 // 阻塞读取，如果返回错误，则说明 Tcp_server 已有错误
 func (t *TcpServer) Read() (InputStruct, error) {
 	buf := make([]byte, 1000)
-	_, err := t.conn.Read(buf)
+	cnt, err := t.conn.Read(buf)
 	if err != nil {
+		fmt.Println(tag, "error read: ", err)
 		removeClientServer(t.Id)
 		return InputStruct{}, err
 	}
 
 	is := InputStruct{}
-	err = json.Unmarshal(buf, &is)
+	err = json.Unmarshal(buf[:cnt], &is)
 	if err != nil {
 		fmt.Println(tag, "unmarshal error: ", err)
 		return t.Read()
