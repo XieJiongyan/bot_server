@@ -51,7 +51,7 @@ func init() {
 //处理客户端请求
 //get: 得到客户端的所有闹钟信息
 //post: 修改某一闹钟
-func DealClockForClient(is server.InputStruct, t server.TcpServer) error {
+func DealClockForClient(is server.NetStruct, t server.TcpServer) error {
 	if len(is.Options) >= 1 && is.Options[0] == "get" {
 		//TODO:这里需要增加一层逻辑，只给当前 client 管理的 devices 的信息
 		writeByte, err := json.Marshal(cd.Devices[fmt.Sprint(t.Id)])
@@ -59,7 +59,13 @@ func DealClockForClient(is server.InputStruct, t server.TcpServer) error {
 			fmt.Println(tag, "error marshel: ", err)
 		}
 		writeByte = append(writeByte, byte('\n'))
-		err = t.Write(writeByte)
+
+		nets := server.NetStruct{
+			Command: "clock",
+			Options: []string{"total"},
+			Extras:  string(writeByte),
+		}
+		err = t.Write(nets)
 		if err != nil {
 			fmt.Println(tag, "error write conn: ", err)
 			return err

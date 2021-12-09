@@ -72,7 +72,7 @@ func loginAccount(readByte []byte) (bool, uint, error) {
 		ok := sc.clientAccount.login(id, password)
 		return ok, id, nil
 	}
-	err = fmt.Errorf("Unknown login command")
+	err = fmt.Errorf("unknown login command")
 	return false, 0, err
 }
 
@@ -136,7 +136,7 @@ func (t *TcpServer) heartbeat() {
 	for {
 		time.Sleep(time.Duration(5) * time.Second)
 		t.conn.SetDeadline(time.Now().Add(time.Second * 15))
-		err := t.Write([]byte("heartbeat\n"))
+		err := t.Write(NetStruct{Command: "heartbeat"})
 		if err != nil {
 			fmt.Println(tag, err)
 			return
@@ -144,32 +144,49 @@ func (t *TcpServer) heartbeat() {
 	}
 }
 
-func (t *TcpServer) Write(b []byte) error {
-	_, err := t.conn.Write(b)
+// 如果返回错误，应停止该 conn
+func (t *TcpServer) Write(n NetStruct) error {
+	var b []byte
+	b, err := json.Marshal(n)
+	if err != nil {
+		fmt.Println(tag, "Error marshal: ", err)
+		return nil //失败但不停止 conn
+	}
+
+	_, err = t.conn.Write(append(b, '\n'))
 	if err != nil {
 		removeClientServer(t.Id)
 	}
 	return err
 }
 
-type InputStruct struct {
+type NetStruct struct {
 	Command string   `json:"command"`
 	Options []string `json:"options"`
 	Extras  string   `json:"extras"`
 }
 
 // 阻塞读取，如果返回错误，则说明 Tcp_server 已有错误
-func (t *TcpServer) Read() (InputStruct, error) {
+func (t *TcpServer) Read() (NetStruct, error) {
+	fmt.Println(tag, "tag1")
 	buf := make([]byte, 1000)
+	fmt.Println(tag, "tag2")
+	if t.conn == nil {
+		err := fmt.Errorf("t.conn is null")
+		return NetStruct{}, err
+	}
 	cnt, err := t.conn.Read(buf)
+	fmt.Println(tag, "tag3")
 	if err != nil {
 		fmt.Println(tag, "error read: ", err)
 		removeClientServer(t.Id)
-		return InputStruct{}, err
+		return NetStruct{}, err
 	}
 
-	is := InputStruct{}
+	is := NetStruct{}
+	fmt.Println(tag, "tag4")
 	err = json.Unmarshal(buf[:cnt], &is)
+	fmt.Println(tag, "tag5")
 	if err != nil {
 		fmt.Println(tag, "unmarshal error: ", err)
 		return t.Read()
