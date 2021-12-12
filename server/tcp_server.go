@@ -18,7 +18,7 @@ type TcpServer struct {
 // 返回连接构成的 tcp_server, 如果登陆失败，会返回相应的错误
 func LoginForConn(conn net.Conn) (TcpServer, error) {
 	conn.SetDeadline(time.Now().Add(time.Second * 15))
-	conn.Write([]byte("Connected, start logining in\n"))
+	// conn.Write([]byte("Connected, start logining in\n"))
 
 	readByte := make([]byte, 1000)
 	cnt, err := conn.Read(readByte)
@@ -153,6 +153,7 @@ func (t *TcpServer) Write(n NetStruct) error {
 		return nil //失败但不停止 conn
 	}
 
+	fmt.Println(tag, "Ready to write: ", string(b))
 	_, err = t.conn.Write(append(b, '\n'))
 	if err != nil {
 		removeClientServer(t.Id)
@@ -168,15 +169,12 @@ type NetStruct struct {
 
 // 阻塞读取，如果返回错误，则说明 Tcp_server 已有错误
 func (t *TcpServer) Read() (NetStruct, error) {
-	fmt.Println(tag, "tag1")
 	buf := make([]byte, 1000)
-	fmt.Println(tag, "tag2")
 	if t.conn == nil {
 		err := fmt.Errorf("t.conn is null")
 		return NetStruct{}, err
 	}
 	cnt, err := t.conn.Read(buf)
-	fmt.Println(tag, "tag3")
 	if err != nil {
 		fmt.Println(tag, "error read: ", err)
 		removeClientServer(t.Id)
@@ -184,9 +182,7 @@ func (t *TcpServer) Read() (NetStruct, error) {
 	}
 
 	is := NetStruct{}
-	fmt.Println(tag, "tag4")
 	err = json.Unmarshal(buf[:cnt], &is)
-	fmt.Println(tag, "tag5")
 	if err != nil {
 		fmt.Println(tag, "unmarshal error: ", err)
 		return t.Read()

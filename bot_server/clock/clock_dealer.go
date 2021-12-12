@@ -18,13 +18,17 @@ type clock struct {
 }
 
 type device struct {
+	Name   string  `json:"name"`
+	Clocks []clock `json:"clocks"`
+}
+
+type client struct {
 	//FixMe: 这里不知道可不可以用 uint
-	ClientId uint    `json:"client_id"`
-	Clocks   []clock `json:"clocks"`
+	Devices map[string]device `json:"devices"`
 }
 
 type clockData struct {
-	Devices map[string]device `json:"devices"`
+	Clients map[string]client `json:"clients"`
 }
 
 var cd *clockData
@@ -53,8 +57,7 @@ func init() {
 //post: 修改某一闹钟
 func DealClockForClient(is server.NetStruct, t server.TcpServer) error {
 	if len(is.Options) >= 1 && is.Options[0] == "get" {
-		//TODO:这里需要增加一层逻辑，只给当前 client 管理的 devices 的信息
-		writeByte, err := json.Marshal(cd.Devices[fmt.Sprint(t.Id)])
+		writeByte, err := json.Marshal(cd.Clients[fmt.Sprint(t.Id)])
 		if err != nil {
 			fmt.Println(tag, "error marshel: ", err)
 		}
@@ -70,6 +73,8 @@ func DealClockForClient(is server.NetStruct, t server.TcpServer) error {
 			fmt.Println(tag, "error write conn: ", err)
 			return err
 		}
+	} else if len(is.Options) >= 2 && is.Options[0] == "post" && is.Options[1] == "all" {
+
 	}
 	return nil
 }
