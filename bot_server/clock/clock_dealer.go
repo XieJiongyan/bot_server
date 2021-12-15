@@ -23,7 +23,6 @@ type device struct {
 }
 
 type client struct {
-	//FixMe: 这里不知道可不可以用 uint
 	Devices map[string]device `json:"devices"`
 }
 
@@ -42,6 +41,8 @@ func init() {
 	if err != nil {
 		fmt.Println(tag, "error open file: ", err)
 	}
+	defer file.Close()
+
 	bytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		fmt.Println(tag, "error read file: ", err)
@@ -60,6 +61,7 @@ func DealClockForClient(is server.NetStruct, t server.TcpServer) error {
 		writeByte, err := json.Marshal(cd.Clients[fmt.Sprint(t.Id)])
 		if err != nil {
 			fmt.Println(tag, "error marshel: ", err)
+			return nil
 		}
 		writeByte = append(writeByte, byte('\n'))
 
@@ -74,7 +76,43 @@ func DealClockForClient(is server.NetStruct, t server.TcpServer) error {
 			return err
 		}
 	} else if len(is.Options) >= 2 && is.Options[0] == "post" && is.Options[1] == "all" {
+		var newClient client = client{}
+		err := json.Unmarshal([]byte(is.Extras), &newClient)
+		if err != nil {
+			fmt.Println(tag, "error unmarshel for post all: ", err)
+			return nil
+		}
+		cd.Clients[fmt.Sprint(t.Id)] = newClient
 
+		writeFile()
+		nets := server.NetStruct{
+			Command: "Message",
+			Options: []string{"receive post all command"},
+		}
+		err = t.Write(nets)
+		if err != nil {
+			fmt.Println(tag, "error write when receive post all")
+			return err
+		}
 	}
 	return nil
+}
+
+func writeFile() {
+	file, err := os.OpenFile(clockFile, os.O_WRONLY, 0777)
+	if err != nil {
+		fmt.Println(tag, "error open file for writeFile(): ", err)
+		return
+	}
+	defer file.Close()
+	b, err := json.Marshal(cd)
+	if err != nil {
+		fmt.Println(tag, "Error marshal for writeFile: ", err)
+		return
+	}
+	_, err = file.Write(b)
+	if err != nil {
+		fmt.Println(tag, "Error WriteFile: ", err)
+	}
+	fmt.Println(tag, "successfully write to clock.json")
 }
