@@ -99,7 +99,7 @@ func DealClockForClient(is server.NetStruct, t server.TcpServer) error {
 }
 
 func writeFile() {
-	file, err := os.OpenFile(clockFile, os.O_WRONLY, 0777)
+	file, err := os.OpenFile(clockFile, os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
 		fmt.Println(tag, "error open file for writeFile(): ", err)
 		return

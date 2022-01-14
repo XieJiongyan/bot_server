@@ -60,6 +60,7 @@ func loginAccount(readByte []byte) (bool, uint, error) {
 		return false, 0, err
 	}
 
+	//客户端登陆
 	if login_str.Content[0] == "login" && login_str.Content[1] == "client" {
 		id_int, err := strconv.Atoi(login_str.Content[2])
 		if err != nil {
@@ -70,6 +71,17 @@ func loginAccount(readByte []byte) (bool, uint, error) {
 		var password string = login_str.Content[3]
 
 		ok := sc.clientAccount.login(id, password)
+		return ok, id, nil
+	} else if login_str.Content[0] == "login" && login_str.Content[1] == "device" { //设备登陆
+		id_int, err := strconv.Atoi(login_str.Content[2])
+		if err != nil {
+			return false, 0, err
+		}
+		id := uint(id_int)
+
+		var password string = login_str.Content[3]
+
+		ok := sc.deviceAccount.login(id, password)
 		return ok, id, nil
 	}
 	err = fmt.Errorf("unknown login command")
@@ -98,7 +110,7 @@ var sc *server_center
 func init() {
 	sc = &server_center{}
 	sc.clientAccount = *loadAccountByJson("data/clients.json")
-	sc.deviceAccount = *account_construct()
+	sc.deviceAccount = *loadAccountByJson("data/devices.json")
 	sc.clientLock = make(chan bool, 1)
 	sc.deviceLock = make(chan bool, 1)
 	sc.clientServer = make(map[uint]*TcpServer)
