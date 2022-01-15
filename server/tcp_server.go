@@ -11,8 +11,9 @@ import (
 )
 
 type TcpServer struct {
-	Id   uint
-	conn net.Conn
+	Id             uint
+	conn           net.Conn
+	clientOrDevice string
 }
 
 // 返回连接构成的 tcp_server, 如果登陆失败，会返回相应的错误
@@ -30,22 +31,28 @@ func LoginForConn(conn net.Conn) (TcpServer, error) {
 		return TcpServer{}, err
 	}
 
-	//
-	isLoginSuccess, id, err := loginAccount(readByte[:cnt])
+	//登陆，并判断是客户端还是设备端
+	isLoginSuccess, id, clientOrDevice := loginAccount(readByte[:cnt])
 	if !isLoginSuccess {
 		return TcpServer{}, err
 	}
 
 	//Sc 增加该 TcpServer
-	t := &TcpServer{id, conn}
-	addClientServer(t, id)
+	t := &TcpServer{id, conn, clientOrDevice}
+	if clientOrDevice == "client" {
+		addClientServer(t, id)
+	} else if clientOrDevice == "device" {
+		addDeviceServer(t)
+		t.conn.Write([]byte("add Device\n"))
+	}
 
 	//开启 heartbeat
 	go t.heartbeat()
 	return *t, err
 }
 
-func loginAccount(readByte []byte) (bool, uint, error) {
+func loginAccount(readByte []byte) (bool, uint, string) {
+	clientOrDevice := "unknown"
 	type login_content struct {
 		Content []string `json:"content"`
 	}
@@ -53,39 +60,41 @@ func loginAccount(readByte []byte) (bool, uint, error) {
 	login_str.Content = make([]string, 4)
 	err := json.Unmarshal(readByte, login_str)
 	if len(login_str.Content) < 4 {
-		err = fmt.Errorf("login content shorter than 4 ")
-		return false, 0, err
+		fmt.Println("error: login content shorter than 4 ")
+		return false, 0, clientOrDevice
 	}
 	if err != nil {
-		return false, 0, err
+		return false, 0, clientOrDevice
 	}
 
 	//客户端登陆
 	if login_str.Content[0] == "login" && login_str.Content[1] == "client" {
 		id_int, err := strconv.Atoi(login_str.Content[2])
 		if err != nil {
-			return false, 0, err
+			return false, 0, clientOrDevice
 		}
 		id := uint(id_int)
 
 		var password string = login_str.Content[3]
 
 		ok := sc.clientAccount.login(id, password)
-		return ok, id, nil
+		clientOrDevice = "client"
+		return ok, id, clientOrDevice
 	} else if login_str.Content[0] == "login" && login_str.Content[1] == "device" { //设备登陆
 		id_int, err := strconv.Atoi(login_str.Content[2])
 		if err != nil {
-			return false, 0, err
+			return false, 0, clientOrDevice
 		}
 		id := uint(id_int)
 
 		var password string = login_str.Content[3]
 
 		ok := sc.deviceAccount.login(id, password)
-		return ok, id, nil
+		clientOrDevice = "device"
+		return ok, id, clientOrDevice
 	}
-	err = fmt.Errorf("unknown login command")
-	return false, 0, err
+	fmt.Println("error: unknown login command")
+	return false, 0, clientOrDevice
 }
 
 type server_center struct {
@@ -132,6 +141,20 @@ func addClientServer(t *TcpServer, id uint) bool {
 	return true
 }
 
+func addDeviceServer(t *TcpServer) bool {
+	sc.deviceLock <- true
+	defer func() { <-sc.deviceLock }()
+
+	var id uint = t.Id
+	_, exist := sc.deviceServer[id]
+	if exist {
+		fmt.Println("already exist this device")
+		return false
+	}
+
+	sc.deviceServer[id] = t
+	return true
+}
 func removeClientServer(id uint) {
 	sc.clientLock <- true
 	defer func() { <-sc.clientLock }()
@@ -141,6 +164,17 @@ func removeClientServer(id uint) {
 	sc.clientServer[id].conn.Close()
 	sc.clientAccount.logout(id)
 	delete(sc.clientServer, id)
+}
+func removeDeviceServer(id uint) {
+	sc.deviceLock <- true
+	defer func() { <-sc.deviceLock }()
+
+	if _, isExist := sc.deviceServer[id]; !isExist {
+		return
+	}
+	sc.deviceServer[id].conn.Close()
+	sc.deviceAccount.logout(id)
+	delete(sc.deviceServer, id)
 }
 
 //通过 TcpServer.heartbeat() 确保及时知道网络连接情况
@@ -168,7 +202,11 @@ func (t *TcpServer) Write(n NetStruct) error {
 	fmt.Println(tag, "Ready to write: ", string(b))
 	_, err = t.conn.Write(append(b, '\n'))
 	if err != nil {
-		removeClientServer(t.Id)
+		if t.clientOrDevice == "client" {
+			removeClientServer(t.Id)
+		} else if t.clientOrDevice == "device" {
+			removeDeviceServer(t.Id)
+		}
 	}
 	return err
 }
@@ -189,7 +227,11 @@ func (t *TcpServer) Read() (NetStruct, error) {
 	cnt, err := t.conn.Read(buf)
 	if err != nil {
 		fmt.Println(tag, "error read: ", err)
-		removeClientServer(t.Id)
+		if t.clientOrDevice == "client" {
+			removeClientServer(t.Id)
+		} else if t.clientOrDevice == "device" {
+			removeDeviceServer(t.Id)
+		}
 		return NetStruct{}, err
 	}
 
