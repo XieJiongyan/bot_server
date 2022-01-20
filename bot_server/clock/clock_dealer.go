@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 )
 
 const tag = "clock "
@@ -115,4 +116,46 @@ func writeFile() {
 		fmt.Println(tag, "Error WriteFile: ", err)
 	}
 	fmt.Println(tag, "successfully write to clock.json")
+}
+
+//get: 得到该闹钟的所有信息
+func DealClockForDevice(is server.NetStruct, t server.TcpServer) error {
+	if len(is.Options) >= 1 && is.Options[0] == "get" {
+		getDevice(t.Id)
+	}
+	return nil
+}
+
+func getDeviceKeys(deviceId uint) (clientKey string, deviceKey string) {
+	var client string
+	var device string
+LOOP:
+	for k0, v := range cd.Clients {
+		for k, _ := range v.Devices {
+			if id, _ := strconv.ParseUint(k, 10, 32); uint(id) == deviceId {
+				client = k0
+				device = k
+				break LOOP
+			}
+		}
+	}
+	return client, device
+}
+
+//直接发送给目标机器
+func getDevice(deviceId uint) {
+	clientKey, deviceKey := getDeviceKeys(deviceId)
+	var content device = cd.Clients[clientKey].Devices[deviceKey]
+	writeByte, err := json.Marshal(content)
+	if err != nil {
+		fmt.Println(tag, "error marshel: ", err)
+	}
+
+	nets := server.NetStruct{
+		Command: "device",
+		Options: []string{"total"},
+		Extras:  string(writeByte),
+	}
+
+	server.WriteToDevice(deviceId, nets)
 }

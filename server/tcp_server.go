@@ -13,7 +13,7 @@ import (
 type TcpServer struct {
 	Id             uint
 	conn           net.Conn
-	clientOrDevice string
+	ClientOrDevice string
 }
 
 // 返回连接构成的 tcp_server, 如果登陆失败，会返回相应的错误
@@ -140,7 +140,6 @@ func addClientServer(t *TcpServer, id uint) bool {
 	sc.clientServer[id] = t
 	return true
 }
-
 func addDeviceServer(t *TcpServer) bool {
 	sc.deviceLock <- true
 	defer func() { <-sc.deviceLock }()
@@ -202,13 +201,22 @@ func (t *TcpServer) Write(n NetStruct) error {
 	fmt.Println(tag, "Ready to write: ", string(b))
 	_, err = t.conn.Write(append(b, '\n'))
 	if err != nil {
-		if t.clientOrDevice == "client" {
+		if t.ClientOrDevice == "client" {
 			removeClientServer(t.Id)
-		} else if t.clientOrDevice == "device" {
+		} else if t.ClientOrDevice == "device" {
 			removeDeviceServer(t.Id)
 		}
 	}
 	return err
+}
+
+//即使写入失败，也不影响调用的 TcpServer
+func WriteToDevice(deviceId uint, n NetStruct) {
+	if _, isExist := sc.deviceServer[deviceId]; !isExist {
+		return
+	}
+
+	sc.deviceServer[deviceId].Write(n)
 }
 
 type NetStruct struct {
@@ -227,9 +235,9 @@ func (t *TcpServer) Read() (NetStruct, error) {
 	cnt, err := t.conn.Read(buf)
 	if err != nil {
 		fmt.Println(tag, "error read: ", err)
-		if t.clientOrDevice == "client" {
+		if t.ClientOrDevice == "client" {
 			removeClientServer(t.Id)
-		} else if t.clientOrDevice == "device" {
+		} else if t.ClientOrDevice == "device" {
 			removeDeviceServer(t.Id)
 		}
 		return NetStruct{}, err

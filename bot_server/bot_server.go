@@ -39,8 +39,14 @@ func startCoon(conn net.Conn) {
 			return
 		}
 
-		if is.Command == "clock" {
+		fmt.Println("bot server receive:", is)
+		if is.Command == "clock" && t.ClientOrDevice == "client" {
 			err := clock.DealClockForClient(is, t)
+			if err != nil {
+				return
+			}
+		} else if is.Command == "clock" && t.ClientOrDevice == "device" {
+			err := clock.DealClockForDevice(is, t)
 			if err != nil {
 				return
 			}
