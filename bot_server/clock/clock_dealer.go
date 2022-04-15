@@ -95,6 +95,12 @@ func DealClockForClient(is server.NetStruct, t server.TcpServer) error {
 			fmt.Println(tag, "error write when receive post all")
 			return err
 		}
+
+		for deviceIdStr, _ := range newClient.Devices {
+			var deviceIdInt int
+			deviceIdInt, err = strconv.Atoi(deviceIdStr)
+			getDevice(uint(deviceIdInt))
+		}
 	}
 	return nil
 }
